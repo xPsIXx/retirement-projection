@@ -1,0 +1,8 @@
+version: "3.9"
+services:
+  fire:
+    build: .
+    container_name: retirement-projection
+    ports:
+      - "8177:8177"
+    restart: unless-stopped

@@ -1,0 +1,171 @@
+<!-- Results -->
+{% if sols %}
+<div class="card">
+  <h2>Results: {{ plan }}</h2>
+
+  {% for sol in sols %}
+  <div class="solution-card">
+    <h3>{{ sol.scenario.name }}</h3>
+    {% set r = sol.best %}
+    <p>{{ describe(sol) }}</p>
+    {% if r %}
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="stat-label">Portfolio at stop</div>
+        <div class="stat-value">{{ money(r.stop_balance) }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Lowest after X</div>
+        <div class="stat-value">{{ money(r.min_balance_after_x) }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Balance at end</div>
+        <div class="stat-value">{{ money(r.end_balance) }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Stop age</div>
+        <div class="stat-value">{{ "%.1f"|format(r.x_end_age) }}</div>
+      </div>
+    </div>
+    {% if without and without[loop.index0].best %}
+    <p class="text-muted" style="margin-top: 8px;">
+      Without 401(k)/Roth/529: stop at {{ "%.1f"|format(without[loop.index0].best.x_end_age) }}
+    </p>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Income plan table -->
+  {% if sols[0].best %}
+  <h3 style="margin: 16px 0 8px; color: #f1f5f9;">Income Plans</h3>
+  {% for sol in sols %}
+  {% if sol.best %}
+  <div style="margin-bottom: 16px;">
+    <p style="font-weight: 600; color: #60a5fa;">{{ sol.scenario.name }}</p>
+    <table>
+      <thead>
+        <tr><th>Who</th><th>Ages</th><th class="text-right">Before tax/yr</th><th class="text-right">After tax/yr</th><th>What</th></tr>
+      </thead>
+      <tbody>
+        {% for who, sched in [("you", sol.scenario.income), ("partner", sol.scenario.partner_income)] %}
+          {% set ns = namespace(rows=[]) %}
+          {% for seg in sched %}
+            {% if seg.amount is not equalto("X") and seg.years is not equalto("X") %}
+              {% set _ = ns.rows.append(seg) %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.rows %}
+            {% for seg in ns.rows %}
+            <tr>
+              <td>{{ who }}</td>
+              <td>{{ seg.start|string if seg.start else "" }}–{{ seg.until|string if seg.until else "" }}</td>
+              <td class="text-right">{{ money(seg.amount) }}</td>
+              <td class="text-right">—</td>
+              <td>{{ seg.label }}</td>
+            </tr>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+</div>
+
+<!-- Charts -->
+{% if charts %}
+<div class="card">
+  <h2>Charts</h2>
+  {% for key, chart_json in charts.items() %}
+  <div class="chart-container">
+    <div id="chart-{{ key }}"></div>
+    <script>
+      try {
+        var data_{{ key }} = {{ chart_json|safe }};
+        Plotly.newPlot('chart-{{ key }}', data_{{ key }}.data, data_{{ key }}.layout, {responsive: true});
+      } catch(e) { console.error('Chart error:', e); }
+    </script>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- What-if table -->
+{% if whatif_results %}
+<div class="card">
+  <h2>What-If Analysis</h2>
+  <p class="text-muted" style="margin-bottom: 12px;">Extra savings → weeks sooner you can stop</p>
+  <div style="overflow-x: auto;">
+    <table class="whatif-table">
+      <thead>
+        <tr>
+          <th>Saved at age</th>
+          {% for a in w_amounts %}
+          <th class="text-right">{{ money(a) }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in w_ages %}
+        <tr>
+          <td>{{ "%.0f"|format(g) }}</td>
+          {% for a in w_amounts %}
+          {% set v = whatif_results.get(0, {}).get(a|string + "@" + g|string) %}
+          <td class="text-right">{{ v|string if v is not none else "-" }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Yearly table -->
+{% if show_table and sols[0].best %}
+<div class="card">
+  <h2>Year-by-Year</h2>
+  {% for sol in sols %}
+  {% if sol.best %}
+  <div style="overflow-x: auto; margin-bottom: 16px;">
+    <p style="font-weight: 600; color: #60a5fa; margin-bottom: 8px;">{{ sol.scenario.name }}</p>
+    <table>
+      <thead>
+        <tr>
+          <th class="text-right">Age</th><th class="text-right">Year</th>
+          <th class="text-right">Gross</th><th class="text-right">Take-home</th>
+          <th class="text-right">Expenses</th><th class="text-right">Invested</th>
+          <th class="text-right">Sold</th><th class="text-right">CG Tax</th>
+          <th class="text-right">Balance</th><th class="text-right">Basis</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sol.best.rows %}
+        <tr class="{{ 'text-red' if row.balance < 0 }}">
+          <td class="text-right">{{ row.age }}</td>
+          <td class="text-right">{{ row.year }}</td>
+          <td class="text-right">{{ money(row.gross) }}</td>
+          <td class="text-right">{{ money(row.net_income) }}</td>
+          <td class="text-right">{{ money(row.expenses) }}</td>
+          <td class="text-right">{{ money(row.invested) }}</td>
+          <td class="text-right">{{ money(row.sold) }}</td>
+          <td class="text-right">{{ money(row.cg_tax) }}</td>
+          <td class="text-right">{{ money(row.balance) }}</td>
+          <td class="text-right">{{ money(row.basis) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="text-align: center; margin-top: 12px;">
+  <button class="btn btn-secondary" onclick="document.getElementById('results').innerHTML = ''; window.scrollTo(0, 0);">Clear Results</button>
+</div>
+{% endif %}

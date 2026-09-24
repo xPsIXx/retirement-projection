@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIRE Simulator</title>
+  <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    h1 { font-size: 2rem; margin-bottom: 0.25rem; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+    .card { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #334155; }
+    .card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #f1f5f9; }
+    .form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 0.85rem; color: #94a3b8; }
+    select, input[type="text"], input[type="checkbox"] { padding: 8px 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; font-size: 0.9rem; }
+    select:focus, input:focus { outline: none; border-color: #60a5fa; }
+    .btn { padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn-secondary:hover { background: #475569; }
+    .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; color: #cbd5e1; }
+    .checkbox-label input { width: 16px; height: 16px; }
+    .chart-container { margin-bottom: 20px; }
+    .chart-container .js-plotly-plot { border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; padding: 8px 12px; border-bottom: 2px solid #334155; color: #94a3b8; font-weight: 600; white-space: nowrap; }
+    td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+    tr:hover td { background: #1e293b; }
+    .text-right { text-align: right; }
+    .text-green { color: #4ade80; }
+    .text-red { color: #f87171; }
+    .text-muted { color: #64748b; }
+    .solution-card { background: #0f172a; border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid #334155; }
+    .solution-card h3 { color: #60a5fa; margin-bottom: 8px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 8px; }
+    .stat { background: #1e293b; padding: 12px; border-radius: 8px; }
+    .stat-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 1.1rem; font-weight: 600; color: #f1f5f9; margin-top: 2px; }
+    .whatif-table { margin-top: 12px; }
+    .whatif-table th { background: #1e293b; }
+    .loading { display: none; text-align: center; padding: 40px; color: #94a3b8; }
+    .loading.active { display: block; }
+    .content { display: block; }
+    .content.hidden { display: none; }
+    @media (max-width: 768px) { .form-row { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💰 FIRE Simulator</h1>
+    <p class="subtitle">Financial Independence, Retire Early — day-by-day simulation</p>
+
+    <div class="card">
+      <h2>Configuration</h2>
+      <form id="sim-form" method="post" action="/run" onsubmit="showLoading()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="plan">Plan</label>
+            <select name="plan" id="plan">
+              {% for name, pkg in plans %}
+              <option value="{{ name }}">{{ name }} ({{ pkg }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" name="no_accounts" value="true">
+              No 401(k)/Roth/529
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" name="table" value="true">
+              Show yearly table
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="whatif_amounts">What-if amounts ($, comma-separated)</label>
+            <input type="text" name="whatif_amounts" id="whatif_amounts" value="{{ whatif_amounts }}" placeholder="10000, 25000, 50000">
+          </div>
+          <div class="form-group">
+            <label for="whatif_ages">What-if ages (comma-separated)</label>
+            <input type="text" name="whatif_ages" id="whatif_ages" value="{{ whatif_ages }}" placeholder="25, 30, 35, 40, 45">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Run Simulation</button>
+      </form>
+    </div>
+
+    <div class="loading" id="loading">
+      <p>⏳ Running simulation... (this may take a few seconds)</p>
+    </div>
+
+    <div id="results">
+      <!-- Results rendered here -->
+    </div>
+  </div>
+
+  <script>
+    function showLoading() {
+      document.getElementById('loading').classList.add('active');
+    }
+    document.getElementById('sim-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      showLoading();
+      const form = e.target;
+      const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
+      const html = await resp.text();
+      document.getElementById('loading').classList.remove('active');
+      document.getElementById('results').innerHTML = html;
+    });
+  </script>
+</body>
+</html>
