@@ -280,13 +280,12 @@ def run_submit(
 def run_status(job_id: str):
     job = JOBS.get(job_id)
     if not job:
-        return JSONResponse({"status": "unknown"})
+        return JSONResponse({"status": "unknown"}, headers={"Cache-Control": "no-store"})
     if job["status"] == "done":
-        # detach from cache so browsers can't 304 a result page
         resp = HTMLResponse(job["html"])
         resp.headers["Cache-Control"] = "no-store"
         return resp
-    return JSONResponse({"status": job["status"]})
+    return JSONResponse({"status": job["status"]}, headers={"Cache-Control": "no-store"})
 
 
 if __name__ == "__main__":

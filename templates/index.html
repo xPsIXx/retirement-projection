@@ -99,29 +99,45 @@
     <div id="results"></div>
   </div>
 <script>
-  document.getElementById('sim-form').addEventListener('submit', async (e) => {
+  const form = document.getElementById('sim-form');
+  let running = false;
+  let elapsedTimer = null;
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const form = e.target;
+    if (running) return;
+    running = true;
+
     const loading = document.getElementById('loading');
-    loading.classList.add('active');
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    loading.style.display = 'block';
+    document.getElementById('results').innerHTML = '';
+
+    const started = Date.now();
+    elapsedTimer = setInterval(() => {
+      loading.innerHTML = `⏳ Running simulation... <span id="elapsed">${Math.round((Date.now() - started) / 1000)}s</span>`;
+    }, 500);
+
     try {
-      const resp = await fetch('/run', { method: 'POST', body: new FormData(form) });
+      const resp = await fetch('/run', { method: 'POST', body: new FormData(form), cache: 'no-store' });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const { job } = await resp.json();
-      for (let i = 0; i < 300; i++) {
+
+      let done = false;
+      for (let i = 0; i < 300 && !done; i++) {
         await new Promise(r => setTimeout(r, 1500));
-        const s = await fetch('/status/' + job);
-        const ct = s.headers.get('content-type') || '';
-        if (ct.includes('text/html')) {
-          window.location.href = '/status/' + job;
-          return;
-        }
+        const s = await fetch('/status/' + job + '?t=' + Date.now(), { cache: 'no-store' });
+        if ((s.headers.get('content-type') || '').includes('text/html')) done = true;
       }
-      throw new Error('timed out');
+      clearInterval(elapsedTimer);
+      if (!done) throw new Error('timed out');
+      window.location.href = '/status/' + job;
     } catch (err) {
-      loading.classList.remove('active');
-      document.getElementById('results').innerHTML =
-        '<div class="card"><h2>Something went wrong</h2><p>' + err.message + '</p></div>';
+      clearInterval(elapsedTimer);
+      loading.innerHTML = `❌ ${err.message} — please try again.`;
+      btn.disabled = false;
+      running = false;
     }
   });
 </script>
