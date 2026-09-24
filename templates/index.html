@@ -98,5 +98,32 @@
 
     <div id="results"></div>
   </div>
+<script>
+  document.getElementById('sim-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const loading = document.getElementById('loading');
+    loading.classList.add('active');
+    try {
+      const resp = await fetch('/run', { method: 'POST', body: new FormData(form) });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const { job } = await resp.json();
+      for (let i = 0; i < 300; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const s = await fetch('/status/' + job);
+        const ct = s.headers.get('content-type') || '';
+        if (ct.includes('text/html')) {
+          window.location.href = '/status/' + job;
+          return;
+        }
+      }
+      throw new Error('timed out');
+    } catch (err) {
+      loading.classList.remove('active');
+      document.getElementById('results').innerHTML =
+        '<div class="card"><h2>Something went wrong</h2><p>' + err.message + '</p></div>';
+    }
+  });
+</script>
 </body>
 </html>
