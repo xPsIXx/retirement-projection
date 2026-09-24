@@ -114,7 +114,14 @@
       const resp = await fetch(form.action, { method: 'POST', body: new FormData(form) });
       const html = await resp.text();
       document.getElementById('loading').classList.remove('active');
-      document.getElementById('results').innerHTML = html;
+      const results = document.getElementById('results');
+      results.innerHTML = html;
+      // innerHTML does not execute <script> tags — re-run them so charts render
+      results.querySelectorAll('script').forEach(old => {
+        const s = document.createElement('script');
+        s.textContent = old.textContent;
+        old.replaceWith(s);
+      });
     });
   </script>
 </body>
