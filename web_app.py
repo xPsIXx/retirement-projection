@@ -29,6 +29,8 @@ templates.env.globals["enumerate"] = enumerate
 templates.env.globals["zip"] = zip
 templates.env.globals["len"] = len
 
+app.mount("/static", StaticFiles(directory=str(HERE / "static")), name="static")
+
 # ── Load configs and plans ──────────────────────────────────────────────
 
 def load_config(plan: str | None = None, no_accounts: bool = False) -> Config:

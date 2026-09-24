@@ -11,6 +11,7 @@ COPY firemodel/ firemodel/
 COPY default_plans/ default_plans/
 COPY config.py web_app.py ./
 COPY templates/ templates/
+COPY static/ static/
 
 # Sync dependencies
 RUN uv sync --no-dev --frozen
