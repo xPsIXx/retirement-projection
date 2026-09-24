@@ -181,8 +181,7 @@ async def index(request: Request):
     av = get_available()
     plans = [(n, pkg) for n, pkg in av.get("plans", [])]
     grids = [(n, pkg) for n, pkg in av.get("grids", [])]
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "plans": plans,
         "grids": grids,
         "whatif_amounts": "10000, 25000, 50000",
@@ -234,8 +233,7 @@ async def run_simulation(
         if cfg.accounts.active:
             charts["accounts"] = plot_accounts_chart(first_sol.best)
 
-    return templates.TemplateResponse("results.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "results.html", {
         "plan": plan,
         "sols": sols,
         "without": without,
