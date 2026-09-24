@@ -208,7 +208,7 @@ async def run_simulation(
     w_ages = [float(x.strip()) for x in whatif_ages.split(",") if x.strip()]
 
     sols = [solve(cfg, s) for s in scenarios]
-    without = ([solve(cfg.replace(accounts=Accounts()), s) for s in scenarios]
+    without = ([solve(replace(cfg, accounts=Accounts()), s) for s in scenarios]
                if cfg.accounts.active else [])
 
     # What-if
